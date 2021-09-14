@@ -81,13 +81,10 @@ func (w *wait) WaitTimeout(work func(), timeout time.Duration, key interface{}) 
 func (w *wait) WaitContextTimeout(work func(), ctx context.Context, timeout time.Duration, key interface{}) (interface{}, error) {
 	w.initKey(key)
 	e, _ := w.getEvent(key)
-	if ctx != nil {
-		return e.WaitContextTimeout(ctx, timeout)
-	}
 
 	go work()
 
-	return e.WaitTimeout(timeout)
+	return e.WaitContextTimeout(ctx, timeout)
 }
 
 func (w *wait) WaitAny(work func(), keys ...interface{}) (Result, error) {
