@@ -2,6 +2,7 @@ package wait
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"sync"
 	"time"
@@ -16,20 +17,20 @@ type Wait interface {
 	SetContext(ctx context.Context) Wait
 
 	InitKey(keys ...interface{})
-	Wait(work func(), key interface{}) (interface{}, error)
-	WaitContext(work func(), ctx context.Context, key interface{}) (interface{}, error)
-	WaitTimeout(work func(), timeout time.Duration, key interface{}) (interface{}, error)
-	WaitContextTimeout(work func(), ctx context.Context, timeout time.Duration, key interface{}) (interface{}, error)
+	Wait(key interface{}) (interface{}, error)
+	WaitContext(ctx context.Context, key interface{}) (interface{}, error)
+	WaitTimeout(timeout time.Duration, key interface{}) (interface{}, error)
+	WaitContextTimeout(ctx context.Context, timeout time.Duration, key interface{}) (interface{}, error)
 
-	WaitAny(work func(), keys ...interface{}) (Result, error)
-	WaitAnyContext(work func(), ctx context.Context, keys ...interface{}) (Result, error)
-	WaitAnyTimeout(work func(), timeout time.Duration, keys ...interface{}) (Result, error)
-	WaitAnyContextTimeout(work func(), ctx context.Context, timeout time.Duration, keys ...interface{}) (Result, error)
+	WaitAny(keys ...interface{}) (Result, error)
+	WaitAnyContext(ctx context.Context, keys ...interface{}) (Result, error)
+	WaitAnyTimeout(timeout time.Duration, keys ...interface{}) (Result, error)
+	WaitAnyContextTimeout(ctx context.Context, timeout time.Duration, keys ...interface{}) (Result, error)
 
-	WaitAll(work func(), keys ...interface{}) (Result, error)
-	WaitAllContext(work func(), ctx context.Context, keys ...interface{}) (Result, error)
-	WaitAllTimeout(work func(), timeout time.Duration, keys ...interface{}) (Result, error)
-	WaitAllContextTimeout(work func(), ctx context.Context, timeout time.Duration, keys ...interface{}) (Result, error)
+	WaitAll(keys ...interface{}) (Result, error)
+	WaitAllContext(ctx context.Context, keys ...interface{}) (Result, error)
+	WaitAllTimeout(timeout time.Duration, keys ...interface{}) (Result, error)
+	WaitAllContextTimeout(ctx context.Context, timeout time.Duration, keys ...interface{}) (Result, error)
 
 	Trigger(key interface{})
 	TriggerValue(key, value interface{})
@@ -67,49 +68,52 @@ func (w *wait) SetContext(ctx context.Context) Wait {
 	return w
 }
 
-func (w *wait) Wait(work func(), key interface{}) (interface{}, error) {
-	return w.WaitContextTimeout(work, w.ctx, w.timeout, key)
+func (w *wait) Wait(key interface{}) (interface{}, error) {
+	return w.WaitContextTimeout(w.ctx, w.timeout, key)
 }
 
-func (w *wait) WaitContext(work func(), ctx context.Context, key interface{}) (interface{}, error) {
-	return w.WaitContextTimeout(work, ctx, w.timeout, key)
+func (w *wait) WaitContext(ctx context.Context, key interface{}) (interface{}, error) {
+	return w.WaitContextTimeout(ctx, w.timeout, key)
 }
 
-func (w *wait) WaitTimeout(work func(), timeout time.Duration, key interface{}) (interface{}, error) {
-	return w.WaitContextTimeout(work, w.ctx, timeout, key)
+func (w *wait) WaitTimeout(timeout time.Duration, key interface{}) (interface{}, error) {
+	return w.WaitContextTimeout(w.ctx, timeout, key)
 }
 
-func (w *wait) WaitContextTimeout(work func(), ctx context.Context, timeout time.Duration, key interface{}) (interface{}, error) {
-	e, _ := w.getEvent(key)
-
-	go work()
+func (w *wait) WaitContextTimeout(ctx context.Context, timeout time.Duration, key interface{}) (interface{}, error) {
+	e, ok := w.getEvent(key)
+	if !ok {
+		return nil, fmt.Errorf("Not init key %v ", key)
+	}
 
 	return e.WaitContextTimeout(ctx, timeout)
 }
 
-func (w *wait) WaitAny(work func(), keys ...interface{}) (Result, error) {
-	return w.WaitAnyContextTimeout(work, w.ctx, w.timeout, keys...)
+func (w *wait) WaitAny(keys ...interface{}) (Result, error) {
+	return w.WaitAnyContextTimeout(w.ctx, w.timeout, keys...)
 }
 
-func (w *wait) WaitAnyContext(work func(), ctx context.Context, keys ...interface{}) (Result, error) {
-	return w.WaitAnyContextTimeout(work, ctx, w.timeout, keys...)
+func (w *wait) WaitAnyContext(ctx context.Context, keys ...interface{}) (Result, error) {
+	return w.WaitAnyContextTimeout(ctx, w.timeout, keys...)
 }
 
-func (w *wait) WaitAnyTimeout(work func(), timeout time.Duration, keys ...interface{}) (Result, error) {
-	return w.WaitAnyContextTimeout(work, w.ctx, timeout, keys...)
+func (w *wait) WaitAnyTimeout(timeout time.Duration, keys ...interface{}) (Result, error) {
+	return w.WaitAnyContextTimeout(w.ctx, timeout, keys...)
 }
 
-func (w *wait) WaitAnyContextTimeout(work func(), ctx context.Context, timeout time.Duration, keys ...interface{}) (Result, error) {
-
-	parentContext := ctx
-	if parentContext == nil {
-		parentContext = context.Background()
+func (w *wait) WaitAnyContextTimeout(ctx context.Context, timeout time.Duration, keys ...interface{}) (Result, error) {
+	if ctx == nil {
+		ctx = context.Background()
 	}
+
 	ch := make(chan waitResult)
-	commander, cancel := context.WithCancel(parentContext)
+	commander, cancel := context.WithCancel(ctx)
 	for _, key := range keys {
 		go func(key interface{}) {
-			e, _ := w.getEvent(key)
+			e, ok := w.getEvent(key)
+			if !ok {
+				return
+			}
 			obj, err := e.WaitContextTimeout(commander, timeout)
 			var r Result = nil
 			if err == nil {
@@ -124,8 +128,6 @@ func (w *wait) WaitAnyContextTimeout(work func(), ctx context.Context, timeout t
 		}(key)
 	}
 
-	go work()
-
 	defer cancel()
 
 	select {
@@ -136,19 +138,19 @@ func (w *wait) WaitAnyContextTimeout(work func(), ctx context.Context, timeout t
 	}
 }
 
-func (w *wait) WaitAll(work func(), keys ...interface{}) (Result, error) {
-	return w.WaitAllContextTimeout(work, w.ctx, w.timeout, keys...)
+func (w *wait) WaitAll(keys ...interface{}) (Result, error) {
+	return w.WaitAllContextTimeout(w.ctx, w.timeout, keys...)
 }
 
-func (w *wait) WaitAllContext(work func(), ctx context.Context, keys ...interface{}) (Result, error) {
-	return w.WaitAllContextTimeout(work, ctx, w.timeout, keys...)
+func (w *wait) WaitAllContext(ctx context.Context, keys ...interface{}) (Result, error) {
+	return w.WaitAllContextTimeout(ctx, w.timeout, keys...)
 }
 
-func (w *wait) WaitAllTimeout(work func(), timeout time.Duration, keys ...interface{}) (Result, error) {
-	return w.WaitAllContextTimeout(work, w.ctx, timeout, keys...)
+func (w *wait) WaitAllTimeout(timeout time.Duration, keys ...interface{}) (Result, error) {
+	return w.WaitAllContextTimeout(w.ctx, timeout, keys...)
 }
 
-func (w *wait) WaitAllContextTimeout(work func(), ctx context.Context, timeout time.Duration, keys ...interface{}) (Result, error) {
+func (w *wait) WaitAllContextTimeout(ctx context.Context, timeout time.Duration, keys ...interface{}) (Result, error) {
 
 	var parentContext context.Context = nil
 	if ctx == nil {
@@ -162,7 +164,11 @@ func (w *wait) WaitAllContextTimeout(work func(), ctx context.Context, timeout t
 	timer := time.NewTimer(w.timeout)
 	for _, key := range keys {
 		go func(key interface{}) {
-			e, _ := w.getEvent(key)
+			e, ok := w.getEvent(key)
+			if !ok {
+				return
+			}
+
 			obj, err := e.WaitContextTimeout(commander, w.timeout)
 			var r Result = nil
 			if err == nil {
@@ -176,8 +182,6 @@ func (w *wait) WaitAllContextTimeout(work func(), ctx context.Context, timeout t
 			}
 		}(key)
 	}
-
-	go work()
 
 	// 停止
 	defer cancel()
