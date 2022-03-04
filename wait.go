@@ -15,6 +15,7 @@ type Wait interface {
 	SetTimeout(timeout time.Duration) Wait
 	SetContext(ctx context.Context) Wait
 
+	InitKey(keys ...interface{})
 	Wait(work func(), key interface{}) (interface{}, error)
 	WaitContext(work func(), ctx context.Context, key interface{}) (interface{}, error)
 	WaitTimeout(work func(), timeout time.Duration, key interface{}) (interface{}, error)
@@ -79,7 +80,6 @@ func (w *wait) WaitTimeout(work func(), timeout time.Duration, key interface{}) 
 }
 
 func (w *wait) WaitContextTimeout(work func(), ctx context.Context, timeout time.Duration, key interface{}) (interface{}, error) {
-	w.initKey(key)
 	e, _ := w.getEvent(key)
 
 	go work()
@@ -100,7 +100,6 @@ func (w *wait) WaitAnyTimeout(work func(), timeout time.Duration, keys ...interf
 }
 
 func (w *wait) WaitAnyContextTimeout(work func(), ctx context.Context, timeout time.Duration, keys ...interface{}) (Result, error) {
-	w.initKey(keys...)
 
 	parentContext := ctx
 	if parentContext == nil {
@@ -150,7 +149,6 @@ func (w *wait) WaitAllTimeout(work func(), timeout time.Duration, keys ...interf
 }
 
 func (w *wait) WaitAllContextTimeout(work func(), ctx context.Context, timeout time.Duration, keys ...interface{}) (Result, error) {
-	w.initKey(keys...)
 
 	var parentContext context.Context = nil
 	if ctx == nil {
@@ -214,7 +212,7 @@ func (w *wait) TriggerValue(key, value interface{}) {
 	e.Trigger(value)
 }
 
-func (w *wait) initKey(keys ...interface{}) {
+func (w *wait) InitKey(keys ...interface{}) {
 	for _, key := range keys {
 		w.m.Store(key, NewEvent())
 	}
