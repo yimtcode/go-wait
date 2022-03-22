@@ -9,7 +9,7 @@ func TestWait_Wait(t *testing.T) {
 	key, value := 0x1, 999
 	w := NewWait()
 	w.SetTimeout(10 * time.Second)
-	w.InitKey(key)
+	w.InitKey(0, key)
 	go func() {
 		time.AfterFunc(2*time.Second, func() {
 			w.TriggerValue(key, value)
@@ -29,7 +29,7 @@ func TestWait_WaitAll(t *testing.T) {
 
 	w := NewWait()
 	w.SetTimeout(10 * time.Second)
-	w.InitKey(keys...)
+	w.InitKey(0, keys...)
 	go func() {
 		time.AfterFunc(1*time.Second, func() {
 			w.TriggerValue(keys[0], values[0])
@@ -58,7 +58,7 @@ func TestWait_WaitAny(t *testing.T) {
 
 	w := NewWait()
 	w.SetTimeout(10 * time.Second)
-	w.InitKey(keys...)
+	w.InitKey(0, keys...)
 	go func() {
 		time.AfterFunc(2*time.Second, func() {
 			w.TriggerValue(keys[0], values[0])

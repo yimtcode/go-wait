@@ -16,7 +16,7 @@ type Wait interface {
 	SetTimeout(timeout time.Duration) Wait
 	SetContext(ctx context.Context) Wait
 
-	InitKey(keys ...interface{})
+	InitKey(buf int, keys ...interface{})
 	Wait(key interface{}) (interface{}, error)
 	WaitContext(ctx context.Context, key interface{}) (interface{}, error)
 	WaitTimeout(timeout time.Duration, key interface{}) (interface{}, error)
@@ -216,9 +216,9 @@ func (w *wait) TriggerValue(key, value interface{}) {
 	e.Trigger(value)
 }
 
-func (w *wait) InitKey(keys ...interface{}) {
+func (w *wait) InitKey(buf int, keys ...interface{}) {
 	for _, key := range keys {
-		w.m.Store(key, NewEvent())
+		w.m.Store(key, NewEvent(buf))
 	}
 }
 

@@ -17,9 +17,9 @@ type Event interface {
 	Trigger(value interface{})
 }
 
-func NewEvent() Event {
+func NewEvent(buf int) Event {
 	w := &event{}
-	w.c = make(chan interface{})
+	w.c = make(chan interface{}, buf)
 	return w
 }
 
