@@ -99,3 +99,11 @@ func TestWait_WaitAny(t *testing.T) {
 	t.Logf("key1: %d,%t key2: %d,%t key3: %d,%t\n", v1, b1, v2, b2, v3, b3)
 }
 ```
+
+## Change
+
+- v0.0.3
+  - Add buffer in the event
+- v0.0.2
+  - Add InitKey
+- v0.0.1
