@@ -19,14 +19,18 @@ func TestWait_Wait(t *testing.T) {
 	key, value := 0x1, 999
 	w := NewWait()
 	w.SetTimeout(10 * time.Second)
-	w.InitKey(key)
+
+	// 方案1
+	w.SetAutoInit(true, 0)
+	// 方案2
+	//w.InitKey(0, key)
+
 	go func() {
 		time.AfterFunc(2*time.Second, func() {
 			w.TriggerValue(key, value)
 		})
 	}()
 	r, err := w.Wait(key)
-
 	if err != nil {
 		t.Fatal(err.Error())
 	}
@@ -102,8 +106,10 @@ func TestWait_WaitAny(t *testing.T) {
 
 ## Change
 
+- v0.0.4
+  - Add auto init of event.
 - v0.0.3
-  - Add buffer in the event
+  - Add buffer in the event.
 - v0.0.2
-  - Add InitKey
+  - Add InitKey.
 - v0.0.1

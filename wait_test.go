@@ -9,14 +9,18 @@ func TestWait_Wait(t *testing.T) {
 	key, value := 0x1, 999
 	w := NewWait()
 	w.SetTimeout(10 * time.Second)
-	w.InitKey(0, key)
+
+	// Example 1
+	w.SetAutoInit(true, 0)
+	// Example 2 at every one of `Wait`.
+	//w.InitKey(0, key)
+
 	go func() {
 		time.AfterFunc(2*time.Second, func() {
 			w.TriggerValue(key, value)
 		})
 	}()
 	r, err := w.Wait(key)
-
 	if err != nil {
 		t.Fatal(err.Error())
 	}

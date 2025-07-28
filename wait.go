@@ -15,6 +15,7 @@ const defaultTimeout = time.Second * 30
 type Wait interface {
 	SetTimeout(timeout time.Duration) Wait
 	SetContext(ctx context.Context) Wait
+	SetAutoInit(b bool, buf int)
 
 	InitKey(buf int, keys ...interface{})
 	Wait(key interface{}) (interface{}, error)
@@ -51,6 +52,14 @@ type wait struct {
 	ctx     context.Context
 	logger  log.Logger
 	m       sync.Map
+	// 自动创建事件
+	autoInit bool
+	bufCount int
+}
+
+func (w *wait) SetAutoInit(b bool, buf int) {
+	w.autoInit = b
+	w.bufCount = buf
 }
 
 type waitResult struct {
@@ -225,6 +234,11 @@ func (w *wait) InitKey(buf int, keys ...interface{}) {
 func (w *wait) getEvent(key interface{}) (Event, bool) {
 	obj, ok := w.m.Load(key)
 	if !ok {
+		if w.autoInit {
+			e := NewEvent(w.bufCount)
+			w.m.Store(key, e)
+			return e, true
+		}
 		return nil, false
 	}
 
